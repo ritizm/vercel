@@ -53,9 +53,18 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
         body: JSON.stringify({ mobile }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
       
-      if (data.success) {
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Handle non-JSON responses (HTML error pages, etc.)
+        const text = await response.text();
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
+      
+      if (response.ok && data.success) {
         if (data.deviceId) {
           setDeviceId(data.deviceId);
         }
@@ -68,9 +77,10 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
         setShowOtp(true);
         startCountdown();
       } else {
-        throw new Error(data.message);
+        throw new Error(data.message || `Request failed with status ${response.status}`);
       }
     } catch (error: any) {
+      console.error('Send OTP error:', error);
       toast({
         title: "Failed to Send OTP",
         description: error.message || "Please try again",
@@ -112,9 +122,18 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
         body: JSON.stringify({ mobile, otp }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get('content-type');
       
-      if (data.success) {
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Handle non-JSON responses (HTML error pages, etc.)
+        const text = await response.text();
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
+      
+      if (response.ok && data.success) {
         toast({
           title: "Login Successful!",
           description: "Welcome to TataPlay Streaming",
@@ -122,9 +141,10 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
         
         onLoginSuccess();
       } else {
-        throw new Error(data.message);
+        throw new Error(data.message || `Request failed with status ${response.status}`);
       }
     } catch (error: any) {
+      console.error('Verify OTP error:', error);
       toast({
         title: "OTP Verification Failed",
         description: error.message || "Please try again",

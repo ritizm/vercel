@@ -42,20 +42,20 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
     }
 
     setIsLoading(true);
-    
+
     try {
       const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(deviceId && { 'X-Device-Id': deviceId }),
+          'X-Device-Id': deviceId,
         },
         body: JSON.stringify({ mobile }),
       });
 
       let data;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
@@ -63,17 +63,17 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
         const text = await response.text();
         throw new Error(`Server returned ${response.status}: ${response.statusText}`);
       }
-      
+
       if (response.ok && data.success) {
         if (data.deviceId) {
           setDeviceId(data.deviceId);
         }
-        
+
         toast({
           title: "OTP Sent Successfully",
           description: "Check your SMS for the 4-digit verification code",
         });
-        
+
         setShowOtp(true);
         startCountdown();
       } else {
@@ -111,7 +111,7 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
     }
 
     setIsLoading(true);
-    
+
     try {
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
@@ -124,7 +124,7 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
 
       let data;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
@@ -132,13 +132,13 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
         const text = await response.text();
         throw new Error(`Server returned ${response.status}: ${response.statusText}`);
       }
-      
+
       if (response.ok && data.success) {
         toast({
           title: "Login Successful!",
           description: "Welcome to TataPlay Streaming",
         });
-        
+
         onLoginSuccess();
       } else {
         throw new Error(data.message || `Request failed with status ${response.status}`);
@@ -158,7 +158,7 @@ export default function LoginForm({ onLoginSuccess, deviceId, setDeviceId }: Log
   const handleOtpChange = (value: string) => {
     const numericValue = value.replace(/\D/g, '').slice(0, 4);
     setOtp(numericValue);
-    
+
     // Auto-verify when 4 digits are entered
     if (numericValue.length === 4) {
       setTimeout(() => handleVerifyOtp(), 500);

@@ -32,6 +32,8 @@ export class TataPlayAPI {
     const deviceId = this.generateNumericUuid();
     
     try {
+      console.log('Attempting device registration with deviceId:', deviceId);
+      
       const response = await fetch('https://tb.tapi.videoready.tv/binge-mobile-services/pub/api/v1/user/guest/register', {
         method: 'POST',
         headers: {
@@ -49,28 +51,47 @@ export class TataPlayAPI {
         },
       });
 
+      console.log('Device registration response status:', response.status);
+      console.log('Device registration response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Device registration failed:', response.status, errorText);
-        throw new Error(`Failed to register device: ${response.status} ${response.statusText} - ${errorText}`);
+        console.error('Device registration failed:', response.status, response.statusText, errorText);
+        throw new Error(`Failed to register device: ${response.status} ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Expected JSON response but got:', contentType, text.substring(0, 200));
+        throw new Error('TataPlay API returned non-JSON response for device registration');
       }
 
       const data = await response.json();
+      console.log('Device registration response data:', data);
+      
       const anonymousId = data.data?.anonymousId;
 
       if (!anonymousId) {
+        console.error('Missing anonymousId in response:', data);
         throw new Error('Failed to get anonymous ID from device registration');
       }
 
+      console.log('Device registered successfully:', { deviceId, anonymousId });
       return { deviceId, anonymousId };
     } catch (error) {
       console.error('Device registration error:', error);
-      throw error;
+      if (error instanceof Error) {
+        throw new Error(`Device registration failed: ${error.message}`);
+      }
+      throw new Error('Device registration failed: Unknown error');
     }
   }
 
   static async sendOTP(mobile: string, credentials: DeviceCredentials): Promise<string> {
     try {
+      console.log('Attempting to send OTP for mobile:', mobile, 'with credentials:', credentials);
+      
       const response = await fetch('https://tb.tapi.videoready.tv/binge-mobile-services/pub/api/v1/user/authentication/generateOTP', {
         method: 'POST',
         headers: {
@@ -91,17 +112,32 @@ export class TataPlayAPI {
         },
       });
 
+      console.log('OTP send response status:', response.status);
+      console.log('OTP send response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('OTP send failed:', response.status, errorText);
-        throw new Error(`Failed to send OTP: ${response.status} ${response.statusText} - ${errorText}`);
+        console.error('OTP send failed:', response.status, response.statusText, errorText);
+        throw new Error(`Failed to send OTP: ${response.status} ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Expected JSON response but got:', contentType, text.substring(0, 200));
+        throw new Error('TataPlay API returned non-JSON response for OTP generation');
       }
 
       const data = await response.json();
+      console.log('OTP send response data:', data);
+      
       return data.message || 'OTP sent successfully';
     } catch (error) {
       console.error('OTP send error:', error);
-      throw error;
+      if (error instanceof Error) {
+        throw new Error(`OTP sending failed: ${error.message}`);
+      }
+      throw new Error('OTP sending failed: Unknown error');
     }
   }
 

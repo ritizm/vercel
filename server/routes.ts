@@ -35,16 +35,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send OTP
   app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
     try {
+      console.log('Send OTP request received:', { body: req.body, headers: req.headers });
+      
       const { mobile } = sendOtpSchema.parse(req.body);
       let deviceId = req.headers['x-device-id'] as string;
+
+      console.log('Parsed mobile:', mobile, 'deviceId:', deviceId);
 
       // Get or create device credentials
       let session = deviceId ? await storage.getSessionByDeviceId(deviceId) : undefined;
       
+      console.log('Existing session:', session ? 'found' : 'not found');
+      
       if (!session) {
+        console.log('Creating new device registration...');
         const credentials = await TataPlayAPI.registerGuestDevice();
         deviceId = credentials.deviceId;
         
+        console.log('Device registered, creating session...');
         session = await storage.createSession({
           deviceId: credentials.deviceId,
           anonymousId: credentials.anonymousId,
@@ -52,7 +60,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           loginData: null,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
         });
+        console.log('Session created successfully');
       } else {
+        console.log('Updating existing session with mobile number...');
         // Update mobile number
         await storage.updateSession(deviceId, { mobileNumber: mobile });
       }
@@ -62,29 +72,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         anonymousId: session.anonymousId!,
       };
 
+      console.log('Sending OTP with credentials:', credentials);
       const message = await TataPlayAPI.sendOTP(mobile, credentials);
       
+      console.log('OTP sent successfully, returning response');
       res.json({ 
         message, 
         deviceId: session.deviceId,
         success: true 
       });
     } catch (error: any) {
-      console.error('Send OTP error:', error);
+      console.error('Send OTP error - Full error object:', error);
+      console.error('Send OTP error - Stack trace:', error.stack);
       
       // Ensure we always return JSON
       res.setHeader('Content-Type', 'application/json');
       
       // Handle different types of errors
       if (error instanceof z.ZodError) {
+        console.log('Validation error:', error.errors);
         return res.status(400).json({ 
-          message: 'Invalid input data',
+          message: 'Invalid input data: ' + error.errors.map(e => e.message).join(', '),
           success: false 
         });
       }
       
+      const errorMessage = error.message || 'Failed to send OTP';
+      console.error('Returning error response:', errorMessage);
+      
       res.status(500).json({ 
-        message: error.message || 'Failed to send OTP',
+        message: errorMessage,
         success: false 
       });
     }

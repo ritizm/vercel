@@ -71,7 +71,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Send OTP error:', error);
-      res.status(400).json({ 
+      
+      // Ensure we always return JSON
+      res.setHeader('Content-Type', 'application/json');
+      
+      // Handle different types of errors
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: 'Invalid input data',
+          success: false 
+        });
+      }
+      
+      res.status(500).json({ 
         message: error.message || 'Failed to send OTP',
         success: false 
       });
@@ -85,12 +97,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deviceId = req.headers['x-device-id'] as string;
 
       if (!deviceId) {
-        return res.status(400).json({ message: 'Device ID required' });
+        return res.status(400).json({ 
+          message: 'Device ID required',
+          success: false 
+        });
       }
 
       const session = await storage.getSessionByDeviceId(deviceId);
       if (!session || !session.anonymousId) {
-        return res.status(400).json({ message: 'Invalid session' });
+        return res.status(400).json({ 
+          message: 'Invalid session',
+          success: false 
+        });
       }
 
       const credentials = {
@@ -122,7 +140,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Verify OTP error:', error);
-      res.status(400).json({ 
+      
+      // Ensure we always return JSON
+      res.setHeader('Content-Type', 'application/json');
+      
+      // Handle different types of errors
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: 'Invalid input data',
+          success: false 
+        });
+      }
+      
+      res.status(500).json({ 
         message: error.message || 'OTP verification failed',
         success: false 
       });
